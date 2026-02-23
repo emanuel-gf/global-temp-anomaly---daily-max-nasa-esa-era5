@@ -1,5 +1,6 @@
 *.env
 
-/data_
+data_
 *.pdf
 *__pycache__/
+*.sqlite
