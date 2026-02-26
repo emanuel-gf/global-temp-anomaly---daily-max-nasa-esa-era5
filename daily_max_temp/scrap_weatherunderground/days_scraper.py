@@ -96,4 +96,4 @@ def main(date_start, date_end, station_id="EGLC"):
 
 if __name__ == "__main__":
     # Format: YYYY-MM-DD
-    main("2021-10-16", "2021-12-31")
+    main("2020-11-27", "2020-12-31")
