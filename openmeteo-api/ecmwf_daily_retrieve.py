@@ -3,7 +3,7 @@ import requests_cache
 import pandas as pd
 from retry_requests import retry
 from datetime import date
-
+import os 
 def fetch_weather_data(openmeteo, df_input, start_idx, end_idx,
                         start_date="2023-01-01" , end_date = "2026-01-31" ):
         """
@@ -63,7 +63,7 @@ def fetch_weather_data(openmeteo, df_input, start_idx, end_idx,
 
 def main():
     ## imported geolocated dataset
-    df_geolocated = pd.read_csv("data_/geolocated_capitals.csv")
+    df_geolocated = pd.read_csv("/home/camarada/Documents/projects/temp-grss-nasa/data_/geolocated_capitals/geolocated_capitals.csv")
 
     # 1. Configuration & Session Setup
     # Indefinite caching is recommended for historical data to avoid re-requesting the same years
@@ -74,10 +74,11 @@ def main():
     # --- EXECUTION ---
     # Change these indices based on which batch you are running
     # Today: 0 to 60 | Tomorrow: 60 to 117
+    pathfolder = '/home/camarada/Documents/projects/temp-grss-nasa/data_/ecmwf_temp_openmeteo'
     START = 0
     END = 117
-    date_start = "2017-01-01"
-    date_end = "2019-12-31"
+    date_start = "2026-01-01"
+    date_end = "2026-02-28"
     print(f"Requesting data for capitals {START} to {END}...")
     weather_history_df = fetch_weather_data(openmeteo,
                                             df_geolocated,
@@ -88,8 +89,10 @@ def main():
                                             )
 
     # Save results
-    weather_history_df.to_csv(f"ecmwf_weather_batch_{START}_{END}_{date_start}_{date_end}.csv", index=False)
-    print("Done! Data saved to CSV.")
+    filename = f'ecmwf_weather_batch_{START}_{END}_{date_start}_{date_end}.csv'
+    full_path = os.path.join(pathfolder, filename)
+    weather_history_df.to_csv(full_path, index=False)
+    print(f"Done! Data saved to CSV: {full_path}")
 
 if __name__== "__main__":
      main()
