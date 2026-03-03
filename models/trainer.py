@@ -68,7 +68,7 @@ def train_epoch(model, loader, criterion, optimizer, device, use_mask=True):
             mask, year = None, None
 
         optimizer.zero_grad()
-        outputs = model(x, year, mask=mask) if year is not None else model(x, mask=mask)
+        outputs = model(x, year=year, mask=mask) 
         loss = criterion(outputs.squeeze(), y.squeeze())
         loss.backward()
         optimizer.step()
@@ -91,7 +91,7 @@ def evaluate_model(model, loader, criterion, device):
                 x, y = [b.to(device) for b in batch[:2]]
                 mask, year = None, None
 
-            outputs = model(x, year, mask=mask) if year is not None else model(x, mask=mask)
+            outputs = model(x, year=year, mask=mask) 
             total_loss += criterion(outputs.squeeze(), y.squeeze()).item()
             y_true.extend(y.cpu().numpy().flatten())
             y_pred.extend(outputs.cpu().numpy().flatten())

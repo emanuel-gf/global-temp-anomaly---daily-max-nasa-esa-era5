@@ -36,7 +36,7 @@ class MaskTempCNN(nn.Module):
             nn.Linear(64, 1)
         )
 
-    def forward(self, x, mask=None):
+    def forward(self, x,year=None, mask=None):
         if mask is not None:
             x = x * mask
         
