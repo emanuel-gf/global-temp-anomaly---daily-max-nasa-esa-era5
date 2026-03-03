@@ -7,8 +7,8 @@ from .architectures import MaskTempCNN, YearMaskTempCNN
 from .data_loader import (
     BaseTempDataset,
     YearTempDSMask,
-    YearTempDSMask_Holdout,
     YearTempDSMask_Finetun,
+    TempDS2025
 )
 
 # Training utilities
@@ -21,7 +21,7 @@ __all__ = [
     # Data loaders
     "BaseTempDataset",
     "YearTempDSMask",
-    "YearTempDSMask_Holdout",
+    "TempDS2025",
     "YearTempDSMask_Finetun",
     # Training
     "set_seed",
