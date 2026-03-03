@@ -52,12 +52,11 @@ class MaskTempCNN(nn.Module):
         return self.fc(x)
 
 class YearMaskTempCNN(nn.Module):
-    def __init__(self, in_channels, n_classes, dropout, 
+    def __init__(self, in_channels, dropout, 
                  normalize_max_year = 2028,
                 normalize_min_year = 1980):
         super().__init__()
         self.in_channels = in_channels
-        self.n_classes = 1
         self.dropout = dropout
         self.normalize_max_year = normalize_max_year
         self.normalize_min_year = normalize_min_year
