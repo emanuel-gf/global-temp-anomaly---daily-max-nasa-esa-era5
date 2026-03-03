@@ -1,11 +1,13 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import os
 import random
-from datetime import datetime
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-import wandb
+from sklearn.metrics import mean_squared_error
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 def set_seed(seed=42):
     """Ensures reproducibility for Monte Carlo runs."""
@@ -102,7 +104,7 @@ def train_model(model, train_loader, val_loader, config, device, checkpoint_path
     early_stopping = EarlyStopping(patience=config['patience'], verbose=True,
                                     delta=config['delta'])
     
-    if config.get('use_wandb'):
+    if config.get('use_wandb') and wandb is not None:
         wandb.init(project=config['project_wandb'],
                     config=config, ## save hyperparams
                     name=config['run_name'],
@@ -119,7 +121,7 @@ def train_model(model, train_loader, val_loader, config, device, checkpoint_path
         if epoch % 10 == 0 or epoch == 1:
             print(f"Epoch {epoch}: Train MSE {t_mse:.4f} | Val MSE {v_mse:.4f}")
         
-        if config.get('use_wandb'):
+        if config.get('use_wandb') and wandb is not None:
             wandb.log({"train_loss": t_loss,
                         "val_loss": v_loss,
                         "train_mse": t_mse,
@@ -131,5 +133,6 @@ def train_model(model, train_loader, val_loader, config, device, checkpoint_path
             break
     
     ## finish wandb
-    if config.get('use_wandb'): wandb.finish()
+    if config.get('use_wandb') and wandb is not None: 
+        wandb.finish()
     return early_stopping.val_loss_min
