@@ -5,6 +5,9 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 import sys
+import calendar
+import time
+from functools import wraps
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -51,6 +54,17 @@ LATITUDE_ZONES = {
     "land_30N_60N":  ( 30,  60),
     "land_60N_90N":  ( 60,  90),
 }
+
+def timeit(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        elapsed = time.time() - start
+        mins, secs = divmod(elapsed, 60)
+        print(f"  [TIME] {func.__name__} took {int(mins)}m {secs:.1f}s")
+        return result
+    return wrapper
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Extract ERA5 area-weighted zonal features.")
@@ -154,7 +168,7 @@ def compute_zonal_features(daily_t2m, lsm, zones):
 
     return pd.concat(records, ignore_index=True)
 
-
+@timeit
 def process_month(ds, lsm, year, month, resolution, path_output, path_cache):
     """
     Full pipeline for a single (year, month):
@@ -177,7 +191,9 @@ def process_month(ds, lsm, year, month, resolution, path_output, path_cache):
 
     start_date = f"{year}-{month:02d}-01"
     # Use next month to define end cleanly, then trim with the slice
-    end_date   = f"{year}-{month:02d}-31"
+    # With this:
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day:02d}"
 
     # ── Step 1: Load or build coarsened cache ─────────────────────────────────
     if os.path.exists(cache_file):
