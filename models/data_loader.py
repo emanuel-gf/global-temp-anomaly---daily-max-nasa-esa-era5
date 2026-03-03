@@ -14,8 +14,7 @@ class BaseTempDataset(Dataset):
         tts = (tt - mu) / (std + 1e-8)
         return tts.numpy()
 
-    def get_month_year(self, idx):
-        return self.month_years[idx]
+
 
 class YearTempDSMask(BaseTempDataset):
     """Dataset class with Masking and Year injection.
@@ -68,6 +67,9 @@ class YearTempDSMask(BaseTempDataset):
             mask = torch.FloatTensor(self.masks[idx])
             return x, y, mask, year
         return x, y, year
+    
+    def get_month_year(self, idx):
+        return self.month_years[idx]
 
     def get_2025_dataset(self):
         return TempDS2025(self.temp_matrices_2025, self.masks_2025, self.labels_2025, 
@@ -121,3 +123,6 @@ class YearTempDSMask_Finetun(BaseTempDataset):
             mask = torch.FloatTensor(self.masks[idx])
             return x, y, mask, year
         return x, y, year
+
+    def get_month_year(self, idx):
+        return self.month_years[idx]
