@@ -14,6 +14,9 @@ class BaseTempDataset(Dataset):
         tts = (tt - mu) / (std + 1e-8)
         return tts.numpy()
 
+    def get_month_year(self, idx):
+        return self.month_years[idx]
+
 class YearTempDSMask(BaseTempDataset):
     """Dataset class with Masking and Year injection.
 
@@ -70,6 +73,7 @@ class YearTempDSMask(BaseTempDataset):
         return TempDS2025(self.temp_matrices_2025, self.masks_2025, self.labels_2025, 
                           self.month_years_2025, self.years_2025, self.return_mask)
 
+        
 class TempDS2025(Dataset):
     """Holdout dataset for 2025 testing."""
     def __init__(self, temp_matrices, masks, labels, month_years, years, return_mask=True):
