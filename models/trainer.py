@@ -99,24 +99,37 @@ def evaluate_model(model, loader, criterion, device):
 def train_model(model, train_loader, val_loader, config, device, checkpoint_path):
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
     criterion = nn.MSELoss()
-    early_stopping = EarlyStopping(patience=config['patience'], verbose=True)
+    early_stopping = EarlyStopping(patience=config['patience'], verbose=True,
+                                    delta=config['delta'])
     
     if config.get('use_wandb'):
-        wandb.init(project=config['project'], config=config, name=config['run_name'])
+        wandb.init(project=config['project_wandb'],
+                    config=config, ## save hyperparams
+                    name=config['run_name'],
+                    group = 'foundation',
+                    config_exclude_keys = ['use_wandb', 'project_wandb', 'run_name','list_config_internals_fm', 'verbose'], ## exclude non-hyperparameter keys
+                    rereinitinit = 'finish_previous'
+                    )
 
     for epoch in range(1, config['epochs'] + 1):
         t_loss, t_mse = train_epoch(model, train_loader, criterion, optimizer, device)
         v_loss, v_mse, _ = evaluate_model(model, val_loader, criterion, device)
         
         print(f"Epoch {epoch}: Train Loss {t_loss:.4f} | Val Loss {v_loss:.4f}")
+        if epoch % 10 == 0 or epoch == 1:
+            print(f"Epoch {epoch}: Train MSE {t_mse:.4f} | Val MSE {v_mse:.4f}")
         
         if config.get('use_wandb'):
-            wandb.log({"train_loss": t_loss, "val_loss": v_loss, "epoch": epoch})
+            wandb.log({"train_loss": t_loss,
+                        "val_loss": v_loss,
+                        "train_mse": t_mse,
+                         "val_mse": v_mse, "epoch": epoch})
 
         early_stopping(v_loss, model, checkpoint_path)
         if early_stopping.early_stop:
             print("Early stopping triggered")
             break
-            
+    
+    ## finish wandb
     if config.get('use_wandb'): wandb.finish()
     return early_stopping.val_loss_min
