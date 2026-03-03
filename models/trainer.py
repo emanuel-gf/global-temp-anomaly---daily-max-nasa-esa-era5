@@ -102,7 +102,7 @@ def train_model(model, train_loader, val_loader, config, device, checkpoint_path
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
     criterion = nn.MSELoss()
     early_stopping = EarlyStopping(patience=config['patience'],
-                                    verbose=True,
+                                    verbose=config['verbose'],
                                     delta=config['delta_early_stop'])
     
     if config.get('use_wandb') and wandb is not None:
@@ -118,10 +118,10 @@ def train_model(model, train_loader, val_loader, config, device, checkpoint_path
         t_loss, t_mse = train_epoch(model, train_loader, criterion, optimizer, device)
         v_loss, v_mse, _ = evaluate_model(model, val_loader, criterion, device)
         
-        print(f"Epoch {epoch}: Train Loss {t_loss:.4f} | Val Loss {v_loss:.4f}")
-        if epoch % 10 == 0 or epoch == 1:
-            print(f"Epoch {epoch}: Train MSE {t_mse:.4f} | Val MSE {v_mse:.4f}")
-        
+        ##print(f"Epoch {epoch}: Train Loss {t_loss:.4f} | Val Loss {v_loss:.4f}")
+        if config['verbose'] and (epoch % 10 == 0 or epoch == 1):
+             print(f"Epoch {epoch}: Train Loss {t_loss:.4f} | Val Loss {v_loss:.4f} | Train MSE {t_mse:.4f} | Val MSE {v_mse:.4f}")
+
         if config.get('use_wandb') and wandb is not None:
             wandb.log({"train_loss": t_loss,
                         "val_loss": v_loss,
