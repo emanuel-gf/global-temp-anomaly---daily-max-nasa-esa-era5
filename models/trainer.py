@@ -101,8 +101,9 @@ def evaluate_model(model, loader, criterion, device):
 def train_model(model, train_loader, val_loader, config, device, checkpoint_path):
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
     criterion = nn.MSELoss()
-    early_stopping = EarlyStopping(patience=config['patience'], verbose=True,
-                                    delta=config['delta'])
+    early_stopping = EarlyStopping(patience=config['patience'],
+                                    verbose=True,
+                                    delta=config['delta_early_stop'])
     
     if config.get('use_wandb') and wandb is not None:
         wandb.init(project=config['project_wandb'],
