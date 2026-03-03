@@ -12,7 +12,7 @@ from .data_loader import (
 )
 
 # Training utilities
-from .trainer import set_seed, EarlyStopping, train_one_epoch, evaluate, train_model
+from .trainer import set_seed, EarlyStopping, train_epoch, evaluate_model
 
 __all__ = [
     # Architectures
@@ -26,7 +26,6 @@ __all__ = [
     # Training
     "set_seed",
     "EarlyStopping",
-    "train_one_epoch",
-    "evaluate",
-    "train_model",
+    "train_epoch",
+    "evaluate_model",
 ]
