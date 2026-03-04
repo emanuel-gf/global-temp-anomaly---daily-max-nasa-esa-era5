@@ -7,28 +7,31 @@ class MaskTempCNN(nn.Module):
         super().__init__()
         self.dropout = dropout
 
-        self.conv_block = nn.Sequential(
+        self.conv1 = nn.Sequential(
             nn.Conv1d(in_channels, 256, kernel_size=5, padding='same'),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(0.01),
-            nn.Dropout(p=self.dropout),
-            
+            nn.Dropout(p=self.dropout)
+        )
+        self.conv2 = nn.Sequential(
             nn.Conv1d(256, 512, kernel_size=5, padding='same'),
             nn.BatchNorm1d(512),
             nn.LeakyReLU(0.01),
-            nn.Dropout(p=self.dropout),
-            
+            nn.Dropout(p=self.dropout)
+        )
+        self.conv3 = nn.Sequential(
             nn.Conv1d(512, 256, kernel_size=3, padding='same'),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(0.01),
-            nn.Dropout(p=self.dropout),
-            
+            nn.Dropout(p=self.dropout)
+        )
+        self.conv4 = nn.Sequential(
             nn.Conv1d(256, 128, kernel_size=3, padding='same'),
             nn.BatchNorm1d(128),
             nn.LeakyReLU(0.01),
             nn.Dropout(p=self.dropout)
         )
-        
+
         self.fc = nn.Sequential(
             nn.Linear(128, 64),
             nn.LeakyReLU(0.01),
@@ -39,8 +42,11 @@ class MaskTempCNN(nn.Module):
     def forward(self, x,year=None, mask=None):
         if mask is not None:
             x = x * mask
-        
-        x = self.conv_block(x)
+
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
 
         if mask is not None:
             mask_pooled = torch.mean(mask, dim=1, keepdim=True)
@@ -48,7 +54,7 @@ class MaskTempCNN(nn.Module):
             x = (x * mask_pooled).sum(dim=2) / valid_count.squeeze(-1)
         else:
             x = torch.mean(x, dim=2)
-            
+
         return self.fc(x)
 
 class YearMaskTempCNN(nn.Module):
