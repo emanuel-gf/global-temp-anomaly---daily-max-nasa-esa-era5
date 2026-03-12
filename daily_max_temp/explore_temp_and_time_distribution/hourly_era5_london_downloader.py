@@ -26,7 +26,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import pandas as pd
 import xarray as xr
-
+import time 
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,44 +68,93 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def open_dataset(pat: str) -> xr.Dataset:
-    """Open the ERA5 Zarr store (lazy, chunked)."""
-    url = f"https://edh:{pat}@data.earthdatahub.destine.eu/era5/reanalysis-era5-land-no-antartica-v0.zarr"
-    print("[info] Opening Zarr store …")
-    ds = xr.open_dataset(url, chunks={}, engine="zarr")
-    return ds
+def build_yearly_windows(
+    date_start: str, date_end: str
+) -> list[tuple[str, str, int]]:
+    """
+    Split [date_start, date_end] into (year_start, year_end, year) triples,
+    one per calendar year contained in the range.
+ 
+    Example
+    -------
+    2019-06-01 → 2021-03-31  yields:
+        ("2019-06-01", "2019-12-31", 2019)
+        ("2020-01-01", "2020-12-31", 2020)
+        ("2021-01-01", "2021-03-31", 2021)
+    """
+    start = pd.Timestamp(date_start)
+    end = pd.Timestamp(date_end)
+ 
+    if start > end:
+        raise ValueError("--date_start must be before or equal to --date_end.")
+ 
+    windows: list[tuple[str, str, int]] = []
+    cursor = start
+ 
+    while cursor <= end:
+        year = cursor.year
+        year_end = pd.Timestamp(f"{year}-12-31")
+        window_end = min(year_end, end)
+        windows.append((cursor.strftime("%Y-%m-%d"), window_end.strftime("%Y-%m-%d"), year))
+        cursor = pd.Timestamp(f"{year + 1}-01-01")
+ 
+    return windows
 
 
-def extract_point_timeseries(
-    ds: xr.Dataset,
-    date_start: str,
-    date_end: str,
+def open_zarr_point(
+    PAT,
     lat: float,
     lon: float,
+    variables:list = ["t2m", "ssrd"]
 ) -> pd.DataFrame:
-    """Slice the dataset in time and space, convert K→°C, return a DataFrame."""
-    print(f"[info] Selecting point lat={lat}, lon={lon} …")
-    ds_point = ds.sel(
-        valid_time=slice(date_start, date_end),
-        latitude=lat,
-        longitude=lon,
-        method="nearest",
-    )
+    """Pre loading zarr operation."""
+    
+    ds_point = xr.open_dataset(
+        f"https://edh:{PAT}@data.earthdatahub.destine.eu/era5/reanalysis-era5-land-no-antartica-v0.zarr",   # chunk by ~1 month of hours
+        engine="zarr",
+        chunks = {},
+    )[variables]    
 
-    print("[info] Converting to °C and computing …")
-    t2m: xr.DataArray = ds_point["t2m"].astype("float32") - 273.15
-    t2m.attrs["units"] = "°C"
+    return ds_point.sel(latitude=lat, longitude=lon, method="nearest")
 
+def extract_xarray(
+        ds: xr.Dataset,
+        year:int,
+        date_start: str,
+        date_end: str,
+        lat:float,
+        lon: float,
+    ):
+    annual = (
+                ds
+                .sel(valid_time=slice(date_start, date_end))
+                .compute()  # triggers the actual remote fetch
+            )
+    
+    ## convert to df
     # Trigger the actual download / computation
-    df = t2m.to_dataframe(name="t2m").reset_index()
+    df = annual.to_dataframe().reset_index()
 
     # Keep only the columns we care about
-    df = df[["valid_time", "t2m"]].copy()
+    df = df[["valid_time", "t2m","ssrd"]].copy()
     df.rename(columns={"valid_time": "datetime"}, inplace=True)
     df["datetime"] = pd.to_datetime(df["datetime"])
-    df["lat"] = lat
-    df["lon"] = lon
 
+    # Drop spatial index columns that xarray adds after .sel()
+    df = df.drop(columns=["latitude", "longitude"], errors="ignore")
+    
+    ## convert to degree
+    df["t2m"] = df["t2m"].astype("float32") - 273.15
+
+    # ssrd: accumulated → hourly flux (W/m²)
+    # ERA5 accumulates from 00:00 UTC, resets at midnight
+    # diff within each day, clip negatives (reset artifact)
+    df = df.sort_values("datetime")
+    df["ssrd"] = df.groupby(df["datetime"].dt.date)["ssrd"].diff().clip(lower=0).fillna(df["ssrd"])
+
+    ## enforce order 
+    df = df[["datetime", "t2m", "ssrd"]].reset_index(drop=True)
+ 
     return df
 
 
@@ -157,11 +206,35 @@ def main() -> None:
     print(f"[info] Location: lat={args.lat}, lon={args.lon}")
     print(f"[info] Output  : {args.output_dir}")
 
-    ds = open_dataset(EARTH_HUB_KEY)
-    df = extract_point_timeseries(ds, args.date_start, args.date_end, args.lat, args.lon)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+ 
+    windows = build_yearly_windows(args.date_start, args.date_end)
 
-    print(f"[info] Downloaded {len(df):,} hourly records.")
-    save_monthly_parquet(df, args.output_dir)
+     # Open the remote store once and reuse across years
+    ds_point = open_zarr_point(EARTH_HUB_KEY, args.lat, args.lon)
+
+    for date_start, date_end, year in windows:
+        start_time_monitor = time.perf_counter()
+        outpath = output_dir / f"era5_{year}.parquet"
+
+        if Path(outpath).exists():
+            print(f"[skip] {outpath} already exists — delete to re-download.")
+            continue
+            end_time_monitor= time.perf_counter()
+        else:
+            df = extract_xarray(ds_point,
+                                year,
+                                date_start,
+                                date_end,
+                                args.lat,
+                                args.lon)
+
+            print(f"[info] Downloaded {len(df):,} hourly records.")
+            end_time_monitor = time.perf_counter()
+            print(f"TIME EXECUTION: {start_time_monitor - end_time_monitor}")
+            df.to_parquet(outpath, index=False)
+            print(f"[saved] {outpath}  ({len(df):,} rows, {df['datetime'].min().date()} → {df['datetime'].max().date()})")
 
     print("[done] All files written successfully.")
 
