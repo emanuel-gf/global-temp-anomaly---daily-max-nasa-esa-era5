@@ -5,21 +5,18 @@ from retry_requests import retry
 import os 
 import datetime
 
-def fetch_weather_data(start_date: str, end_date: str, latitude: float, longitude: float):
-    # Setup the Open-Meteo API client
+def fetch_ecmwf_data(start_date: str, end_date: str, latitude: float, longitude: float):
     cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
     retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
     openmeteo = openmeteo_requests.Client(session = retry_session)
 
-    # Historical Forecast API is correct for UKMO deterministic data
+    # Use the historical-forecast-api for dates in the past
     url = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 
-    # Define the consolidated list of metrics
     metrics = [
-        "temperature_2m", "cloud_cover", "cloud_cover_low", "cloud_cover_mid",
-        "cloud_cover_high", "dew_point_2m", "pressure_msl", "surface_pressure",
-        "wind_speed_10m", "vapour_pressure_deficit", "shortwave_radiation", 
-        "direct_radiation", "precipitation"
+        "temperature_2m", "cloud_cover", "wind_speed_10m", 
+        "cape", "rain", "pressure_msl", 
+        "shortwave_radiation", "direct_radiation"
     ]
 
     params = {
@@ -28,13 +25,12 @@ def fetch_weather_data(start_date: str, end_date: str, latitude: float, longitud
         "start_date": start_date,
         "end_date": end_date,
         "hourly": metrics,
-        "models": "ukmo_uk_deterministic_2km",
+        "models": "ecmwf_ifs025", # High-res ECMWF
     }
     
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
 
-    # Process hourly data using a loop to avoid manual indexing errors
     hourly = response.Hourly()
     hourly_data = {"date": pd.date_range(
         start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
@@ -43,20 +39,20 @@ def fetch_weather_data(start_date: str, end_date: str, latitude: float, longitud
         inclusive = "left"
     )}
 
-    # Dynamically map all requested metrics to the dataframe
+    # Map variables dynamically based on the metrics list
     for i, metric_name in enumerate(metrics):
         hourly_data[metric_name] = hourly.Variables(i).ValuesAsNumpy()
 
     return pd.DataFrame(data = hourly_data)
 
 def main():
-    # Configuration
-    total_start = "2022-03-01"
-    total_end = "2026-03-01" 
-    latitude = 51.505 
+    # Configuration for long-term ECMWF pull
+    total_start = "2017-01-01"
+    total_end = "2026-03-01" # Assuming current date is early 2026
+    latitude = 51.505  # London City Airport
     longitude = 0.055
     
-    dir_save = "/home/camarada/Documents/projects/temp-grss-nasa/data_/UKMet2km_london_hourly/"
+    dir_save = "/home/camarada/Documents/projects/temp-grss-nasa/data_/ecmwf_hres_hourly/"
     os.makedirs(dir_save, exist_ok=True)
 
     start_dt = datetime.datetime.strptime(total_start, "%Y-%m-%d").date()
@@ -69,24 +65,19 @@ def main():
         str_start = year_start.strftime("%Y-%m-%d")
         str_end = year_end.strftime("%Y-%m-%d")
 
-        print(f"--- Fetching UKV Deterministic for {year}: {str_start} to {str_end} ---")
+        print(f"--- Fetching ECMWF for {year}: {str_start} to {str_end} ---")
         
         try:
-            weather_history_df = fetch_weather_data(
-                start_date=str_start, 
-                end_date=str_end,
-                latitude=latitude, 
-                longitude=longitude
-            )
-
-            file_name = f"londocityairport_UKV_{year}.parquet"
+            df = fetch_ecmwf_data(str_start, str_end, latitude, longitude)
+            
+            file_name = f"londocity_ECMWF_{year}.parquet"
             save_path = os.path.join(dir_save, file_name)
 
-            weather_history_df.to_parquet(save_path, index=False)
-            print(f"Successfully saved {len(weather_history_df)} rows to: {save_path}")
+            df.to_parquet(save_path, index=False)
+            print(f"Saved {len(df)} rows to: {save_path}")
             
         except Exception as e:
-            print(f"Error fetching data for year {year}: {e}")
+            print(f"Error for year {year}: {e}")
 
 if __name__ == "__main__":
     main()
