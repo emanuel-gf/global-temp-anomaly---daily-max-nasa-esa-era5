@@ -1,3 +1,6 @@
+Early implementation of a METAR api request bot integrated with a db.
+
+
 The folder is related to WEather Underground. 
 
 API-request handles the Request to the API at the right London Station. 
