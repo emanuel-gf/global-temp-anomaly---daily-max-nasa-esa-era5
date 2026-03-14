@@ -32,7 +32,12 @@ import time
 # Helpers
 # ---------------------------------------------------------------------------
 
-
+# sshf + slhf replace it as proxies for boundary layer mixing capacity.
+# skt and stl1 capture surface and shallow soil thermal state.
+VARIABLES = ["t2m", "ssrd", "sshf", "slhf", "skt", "stl1", "sp", "u10", "v10"]
+ 
+# Accumulated variables that need per-day deaccumulation (diff + clip)
+ACCUMULATED_VARS = ["ssrd", "sshf", "slhf"]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -113,18 +118,53 @@ def open_zarr_point(
         f"https://edh:{PAT}@data.earthdatahub.destine.eu/era5/reanalysis-era5-land-no-antartica-v0.zarr",   # chunk by ~1 month of hours
         engine="zarr",
         chunks = {},
-    )[variables]    
+    )[VARIABLES]    
 
     return ds_point.sel(latitude=lat, longitude=lon, method="nearest")
 
+
+def deaccumulate(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    ERA5 accumulates ssrd, sshf, slhf from 00:00 UTC, resetting each day.
+    Convert to per-hour increments. The first hour of each day already holds
+    a valid one-hour accumulation, so NaN from diff() is filled with the raw value.
+ 
+    Note: sshf and slhf are typically negative (upward convention in ERA5).
+    Clipping to 0 is correct for ssrd (radiation can't be negative) but for
+    heat fluxes we preserve the sign and only fill the first-hour NaN.
+    """
+    df = df.sort_values("datetime").copy()
+    date_groups = df["datetime"].dt.date
+ 
+    # Solar radiation: clip negatives (reset artifact only)
+    df["ssrd"] = (
+        df.groupby(date_groups)["ssrd"]
+        .diff()
+        .clip(lower=0)
+        .fillna(df["ssrd"])
+    )
+ 
+    # Heat fluxes: preserve sign, only fix first-hour NaN
+    for col in ["sshf", "slhf"]:
+        df[col] = (
+            df.groupby(date_groups)[col]
+            .diff()
+            .fillna(df[col])
+        )
+ 
+    return df
+
 def extract_xarray(
         ds: xr.Dataset,
-        year:int,
+        year:int, 
         date_start: str,
         date_end: str,
-        lat:float,
-        lon: float,
     ):
+    """
+    Pull one year from the remote store and return a clean DataFrame.
+    """
+    print(f"[info] Fetching {year} ({date_start} → {date_end}) …")
+
     annual = (
                 ds
                 .sel(valid_time=slice(date_start, date_end))
@@ -134,9 +174,6 @@ def extract_xarray(
     ## convert to df
     # Trigger the actual download / computation
     df = annual.to_dataframe().reset_index()
-
-    # Keep only the columns we care about
-    df = df[["valid_time", "t2m","ssrd"]].copy()
     df.rename(columns={"valid_time": "datetime"}, inplace=True)
     df["datetime"] = pd.to_datetime(df["datetime"])
 
@@ -144,42 +181,18 @@ def extract_xarray(
     df = df.drop(columns=["latitude", "longitude"], errors="ignore")
     
     ## convert to degree
-    df["t2m"] = df["t2m"].astype("float32") - 273.15
+    # K → °C for temperature variables
+    for col in ["t2m", "skt", "stl1"]:
+        df[col] = df[col].astype("float32") - 273.15
 
-    # ssrd: accumulated → hourly flux (W/m²)
-    # ERA5 accumulates from 00:00 UTC, resets at midnight
-    # diff within each day, clip negatives (reset artifact)
-    df = df.sort_values("datetime")
-    df["ssrd"] = df.groupby(df["datetime"].dt.date)["ssrd"].diff().clip(lower=0).fillna(df["ssrd"])
-
-    ## enforce order 
-    df = df[["datetime", "t2m", "ssrd"]].reset_index(drop=True)
+    # Accumulated → per-hour increments
+    df = deaccumulate(df)
+    
+    # Enforce column order
+    df = df[["datetime"] + VARIABLES].reset_index(drop=True)
  
     return df
 
-
-def save_monthly_parquet(df: pd.DataFrame, output_dir: str) -> None:
-    """Split a DataFrame by year/month and save each chunk as a Parquet file."""
-    root = Path(output_dir)
-
-    df["year"] = df["datetime"].dt.year
-    df["month"] = df["datetime"].dt.month
-
-    groups = df.groupby(["year", "month"])
-    total = len(groups)
-
-    for idx, ((year, month), chunk) in enumerate(groups, start=1):
-        month_str = f"{month:02d}"
-        folder = root / str(year) / month_str
-        folder.mkdir(parents=True, exist_ok=True)
-
-        filepath = folder / f"t2m_{year}_{month_str}.parquet"
-
-        # Drop helper columns before saving
-        chunk = chunk.drop(columns=["year", "month"])
-        chunk.to_parquet(filepath, index=False)
-
-        print(f"[{idx}/{total}] Saved → {filepath}  ({len(chunk)} rows)")
 
 
 # ---------------------------------------------------------------------------
@@ -215,26 +228,24 @@ def main() -> None:
     ds_point = open_zarr_point(EARTH_HUB_KEY, args.lat, args.lon)
 
     for date_start, date_end, year in windows:
-        start_time_monitor = time.perf_counter()
         outpath = output_dir / f"era5_{year}.parquet"
 
         if Path(outpath).exists():
             print(f"[skip] {outpath} already exists — delete to re-download.")
             continue
-            end_time_monitor= time.perf_counter()
-        else:
-            df = extract_xarray(ds_point,
+
+        start_time_monitor = time.perf_counter()
+
+        df = extract_xarray(ds_point,
                                 year,
                                 date_start,
-                                date_end,
-                                args.lat,
-                                args.lon)
+                                date_end)
 
-            print(f"[info] Downloaded {len(df):,} hourly records.")
-            end_time_monitor = time.perf_counter()
-            print(f"TIME EXECUTION: {start_time_monitor - end_time_monitor}")
-            df.to_parquet(outpath, index=False)
-            print(f"[saved] {outpath}  ({len(df):,} rows, {df['datetime'].min().date()} → {df['datetime'].max().date()})")
+        print(f"[info] Downloaded {len(df):,} hourly records.")
+        end_time_monitor = time.perf_counter()
+        print(f"TIME EXECUTION: { end_time_monitor - start_time_monitor}")
+        df.to_parquet(outpath, index=False)
+        print(f"[saved] {outpath}  ({len(df):,} rows, {df['datetime'].min().date()} → {df['datetime'].max().date()})")
 
     print("[done] All files written successfully.")
 
