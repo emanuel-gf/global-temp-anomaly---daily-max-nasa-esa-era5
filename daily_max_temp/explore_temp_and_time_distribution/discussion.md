@@ -215,7 +215,7 @@ At inference time (each morning, before the market closes):
 4. Run TMaxThreeStream → [q10, q50, q90]
 5. Fit skew-normal distribution to the three quantiles
 6. Compute P(Tmax > threshold) from the fitted CDF
-7. Compare to Polymarket implied probability → compute edge
+7. Compare to  implied probability → compute edge
 8. Size bet via fractional Kelly criterion if edge > threshold
 ```
 
@@ -238,7 +238,7 @@ from scipy.stats import skewnorm
 
 ```
 model_prob  = P(Tmax > threshold)   from fitted CDF
-market_prob = Polymarket implied probability
+market_prob =  implied probability
 
 edge = model_prob − market_prob
 
@@ -275,6 +275,6 @@ A fractional Kelly multiplier (typically 0.25–0.5) is applied to account for m
 
 **WU station reliability:** Weather Underground data is crowd-sourced from personal weather stations. Data quality varies. Outlier filtering and cross-validation against Open-Meteo actuals is recommended during preprocessing.
 
-**Polymarket resolution station:** The model targets London Tmax generically. If Polymarket resolves on a specific official station (e.g. Heathrow), the WU station should be the nearest available to that reference point.
+** resolution station:** The model targets London Tmax generically. If  resolves on a specific official station (e.g. Heathrow), the WU station should be the nearest available to that reference point.
 
 **Short training set:** UKV historical forecast archive is available from 2017. This gives ~7 years of training data — sufficient but not abundant. The climatological prior embedding is specifically designed to compensate for sparse DOY coverage.
