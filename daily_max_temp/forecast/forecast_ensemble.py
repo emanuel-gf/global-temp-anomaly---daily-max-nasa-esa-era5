@@ -1,4 +1,7 @@
 """
+python forecast_ensemble.py --lat 51.505 --lon 0.055 --timezone 'Europe/London' --city London --root-dir ./apiresult/ensemble
+
+
 PERHAPS THIS SHOULD BE ADAPT TO POINTS OUTSIDE EUROPE. ADAPT THE MODELS.
 
 forecast_cdf_ensemble.py
@@ -44,6 +47,7 @@ import numpy as np
 import pandas as pd
 import requests
 from pathlib import Path
+from datetime import datetime
 
 # --- Configuration ---
 AVAILABLE_MODELS = [
@@ -115,7 +119,7 @@ def main():
     parser = argparse.ArgumentParser(description="Ensemble Weather Fetcher")
     parser.add_argument("--lat", type=float, default=51.505)
     parser.add_argument("--lon", type=float, default=0.055)
-    parser.add_argument("--days", type=int, default=3)
+    parser.add_argument("--forecast-period", type=int, default=3)
     parser.add_argument("--timezone", type=str, default="auto")
     parser.add_argument("--root-dir", type=str, default="./data")
     parser.add_argument("--city",type=str, help='Alias for saving it.')
@@ -125,7 +129,7 @@ def main():
     save_path = Path(args.root_dir)
     save_path.mkdir(parents=True, exist_ok=True)
 
-    target_dates = [date.today() + timedelta(days=i) for i in range(1, args.days + 1)]
+    target_dates = [date.today() + timedelta(days=i) for i in range(0, args.forecast_period + 1)]
 
     print(f"\n{'='*60}")
     print("  Fetching Ensemble CDF Data")
@@ -160,7 +164,7 @@ def main():
     print(pd.DataFrame(summary_rows).to_string(index=False))
 
     # 4. Save raw data
-    filename = save_path / f"ensemble_{args.city}_{date.today()}.parquet"
+    filename = save_path / f"ensemble-{args.city}_{datetime.now().strftime("%Y-%m-%d-%H:%m")}.parquet"
     daily_max_df.to_parquet(filename)
     print(f"\n[INFO] Raw hourly data saved to: {filename}")
 

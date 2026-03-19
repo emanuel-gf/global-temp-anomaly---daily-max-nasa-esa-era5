@@ -157,6 +157,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Multi-model - Deterministic temperature CDF builder")
     parser.add_argument("--lat", type=float, default=48.8566, help="Latitude")
     parser.add_argument("--lon", type=float, default=2.3522, help="Longitude")
+    parser.add_argument("--forecast-period", type=int, default=3)
     parser.add_argument("--timezone", type=str, default = None, help='Timezone of the point')
     parser.add_argument("--root-dir", type=str,default=None, help="Root directory to save the parquet file")
     parser.add_argument("--city", type=str, default="City", help="City name for plot title")
@@ -178,8 +179,7 @@ def main():
 
     ## get today's
     today = date.today()
-    target_dates = [today + timedelta(days=i) for i in range(1, 4)]  # D+1, D+2, D+3
-
+    target_dates = [today + timedelta(days=i) for i in range(0, args.forecast_period+1)]  # D+0, D+1, D+2
     print(f"\nFetching forecasts for {args.city} ({args.lat:.4f}, {args.lon:.4f})")
     print(f"Target dates: {[str(d) for d in target_dates]}\n")
 
