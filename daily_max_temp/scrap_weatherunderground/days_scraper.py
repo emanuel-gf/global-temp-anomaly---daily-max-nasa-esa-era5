@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+import argparse
 def get_driver():
     options = uc.ChromeOptions()
     options.binary_location = "/usr/bin/chromium"
@@ -38,7 +38,18 @@ def scrape_single_day(driver, url):
     except Exception as e:
         return None
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="WeatherUnderground Fetcher")
+    parser.add_argument("--start", type=str, help="First day to start fecthing. YYYY-MM-DD e.g: 2026-03-21")
+    parser.add_argument("--end", type=str, help="Last day to retrieve data ; 2026-03-21")
+    parser.add_argument("--station-id", type=str, default="unknown", help="ID of the METAR estation to be retrieved. It is used to save the file as the given id.")
+    return parser.parse_args()
+    
 def main(date_start, date_end, station_id="EGLC"):
+    args = parse_args()
+    
+    date_start = str(args.start)
+    date_end = str(args.end)
     start = datetime.strptime(date_start, "%Y-%m-%d")
     end = datetime.strptime(date_end, "%Y-%m-%d")
     current_date = start
