@@ -8,11 +8,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import argparse
+from webdriver_manager.chrome import ChromeDriverManager
+
+
+
 def get_driver():
     options = uc.ChromeOptions()
-    options.binary_location = "/usr/bin/chromium"
-    # options.add_argument('--headless')
-    driver = uc.Chrome(options=options)
+    # Ensure this path is correct for your Chromium installation
+    options.binary_location = "/usr/bin/chromium" 
+
+    # 1. Use webdriver-manager to get the path to the correct driver
+    # ChromeDriverManager will automatically match your browser version
+    driver_path = ChromeDriverManager().install()
+
+    # 2. Initialize undetected-chromedriver
+    # We pass the driver_executable_path directly to uc.Chrome
+    driver = uc.Chrome(
+        options=options,
+        driver_executable_path=driver_path
+    )
+    
     return driver
 
 def scrape_single_day(driver, url):
@@ -43,17 +58,22 @@ def parse_args():
     parser.add_argument("--start", type=str, help="First day to start fecthing. YYYY-MM-DD e.g: 2026-03-21")
     parser.add_argument("--end", type=str, help="Last day to retrieve data ; 2026-03-21")
     parser.add_argument("--station-id", type=str, default="unknown", help="ID of the METAR estation to be retrieved. It is used to save the file as the given id.")
+    parser.add_argument("--root", type=str, default=None, help="ROot folder which saves all the formated files per year than month subfolders.")
     return parser.parse_args()
     
 def main(date_start, date_end, station_id="EGLC"):
     args = parse_args()
-    
+
     date_start = str(args.start)
     date_end = str(args.end)
     start = datetime.strptime(date_start, "%Y-%m-%d")
     end = datetime.strptime(date_end, "%Y-%m-%d")
     current_date = start
-    
+
+    if args.root is None:
+        root =  "/home/camarada/Documents/projects/temp-grss-nasa/data_"
+    else:
+        root = str(args.root)
     driver = get_driver()
     last_processed_date = None
 
@@ -64,7 +84,6 @@ def main(date_start, date_end, station_id="EGLC"):
             day = current_date.strftime("%d")
             
             # Create Folder Structure: Year/Month/data_
-            root =  "/home/camarada/Documents/projects/temp-grss-nasa/data_"
             folder_path = os.path.join(root, "wunderground", year, month)
             os.makedirs(folder_path, exist_ok=True)
             
