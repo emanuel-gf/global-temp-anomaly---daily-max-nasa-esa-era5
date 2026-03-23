@@ -1,0 +1,29 @@
+{
+  "London": {
+    "lat": 51.505,
+    "lon": 0.055,
+    "timezone": "Europe/London",
+    "temprange": "13-17",
+    "icao": "EGLC",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Paris": {
+    "lat": 49.009,
+    "lon": 2.5541,
+    "timezone": "Europe/Paris",
+    "temprange": "12-18",
+    "icao": "LFPG",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Warsaw": {
+    "lat": 52.1657,
+    "lon": 20.9671,
+    "timezone": "Europe/Warsaw",
+    "temprange": "10-16",
+    "icao": "EPWA",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  }
+}

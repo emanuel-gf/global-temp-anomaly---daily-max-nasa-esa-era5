@@ -164,7 +164,7 @@ def main():
     print(pd.DataFrame(summary_rows).to_string(index=False))
 
     # 4. Save raw data
-    filename = save_path / f"ensemble-{args.city}_{datetime.now().strftime("%Y-%m-%d-%H:%m")}.parquet"
+    filename = save_path / f"{args.city}-Ensemble{datetime.now().strftime("%Y-%m-%d-%H:%m")}.parquet"
     daily_max_df.to_parquet(filename)
     print(f"\n[INFO] Raw hourly data saved to: {filename}")
 

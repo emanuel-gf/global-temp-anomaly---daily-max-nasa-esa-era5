@@ -8,18 +8,37 @@ from datetime import datetime
 from pandas.api.types import is_datetime64_any_dtype
 import argparse
 
+FOLDER_DETERMINISTIC = "/home/camarada/Documents/projects/temp-grss-nasa/apiresult/deterministic"
+FOLDER_ENSEMBLE = "/home/camarada/Documents/projects/temp-grss-nasa/apiresult/ensemble"
+
 ### ===--------------- FUNCTIONS
-def get_most_recent_file(folder):
-    """
-    Find the most recent parquet in the directory.
-    The parquet are saved with datetime in the filename. Look for most recent datetime. 
-    """
-    files = os.listdir(folder)
-    def extract_datetime(filename):
-        timestamp_str = Path(filename).stem.split('_',2)[1]
-        return datetime.strptime(timestamp_str, "%Y-%m-%d-%H:%M")
+def get_most_recent_file(folder: str, city: str):
+    folder_path = Path(folder)
     
-    return max(files, key=extract_datetime)
+    # 1. Filter files that start with the city and end with .parquet
+    # This prevents the max() function from comparing different cities
+    city_files = [
+        f for f in folder_path.glob(f"{city}-*.parquet") 
+        if f.is_file()
+    ]
+    
+    if not city_files:
+        return None
+
+    def extract_datetime(path: Path):
+        try:
+            # Stem gets 'London-Deterministic_2026-03-23-21:03'
+            # Splitting by '_' and taking the second element
+            timestamp_str = path.stem.split('_')[1]
+            return datetime.strptime(timestamp_str, "%Y-%m-%d-%H:%M")
+        except (IndexError, ValueError):
+            # Return a very old date so malformed files don't win 'max()'
+            return datetime.min
+
+    # 2. Find the max based on the extracted date
+    most_recent = max(city_files, key=extract_datetime)
+    
+    return str(most_recent)
 
 
 ## DETERMINISTIC
@@ -417,6 +436,7 @@ def print_flag_predictions_bias(results_df, temps, hist_min, hist_max):
 ## ----------------------
 def parse_args():
     parser = argparse.ArgumentParser(description="Ensemble Weather Fetcher")
+    parser.add_argument("--city", type=str, help=" Name of city belonging the given lat,lon. Same a the saved by the forecast python files.")
     parser.add_argument("--day", type=str, help="YYYY-MM-DD e.g: 2026-03-21")
     parser.add_argument("--temprange", type=str, help="Min and max temperature to analysis errors. e.g; 11-14")
     return parser.parse_args()
@@ -433,12 +453,12 @@ def main():
     temp_min_ = str(args.temprange).split('-')[0]
     temp_max_ = str(args.temprange).split('-')[1]
     
-    folder_deterministic = "/home/camarada/Documents/projects/temp-grss-nasa/daily_max_temp/forecast/apiresult/deterministic"
-    folder_ensemble = "/home/camarada/Documents/projects/temp-grss-nasa/daily_max_temp/forecast/apiresult/ensemble"
+    folder_deterministic = FOLDER_DETERMINISTIC
+    folder_ensemble = FOLDER_ENSEMBLE
     
     ## get the most recent files from the folder 
-    mr_det_file = get_most_recent_file(folder_deterministic)
-    mr_ensem_file = get_most_recent_file(folder_ensemble)
+    mr_det_file = get_most_recent_file(folder_deterministic, str(args.city))
+    mr_ensem_file = get_most_recent_file(folder_ensemble, str(args.city))
     print(f" most recent file:\n deterministic:{mr_det_file}")
     print(f" ensemble :{mr_ensem_file}")
 
@@ -476,33 +496,36 @@ def main():
                     analysis_day
                     )
 
-    ## historical ERA5
+    ## TODO
+    ## add a way to pass diferent historical folders linked with cities.
+    ## to keep it going it will be an if statement only for london
 
-    ## historical UK2m ========================
-    folder_historical_uk2m = "/home/camarada/Documents/projects/temp-grss-nasa/daily_max_temp/explore_temp_and_time_distribution/historic_uk2m_aggregated"
-    file = "daily_agg_2022-2025_uk2m_wunder_error.csv"
+    if str(args.city).lower().strip() == "london":
+        ## historical UK2m ========================
+        folder_historical_uk2m = "/home/camarada/Documents/projects/temp-grss-nasa/daily_max_temp/explore_temp_and_time_distribution/historic_uk2m_aggregated"
+        file = "daily_agg_2022-2025_uk2m_wunder_error.csv"
 
-    ## create the df
-    df_uk2_err = pd.read_csv(os.path.join(folder_historical_uk2m, file))
+        ## create the df
+        df_uk2_err = pd.read_csv(os.path.join(folder_historical_uk2m, file))
 
-    report_historic_uk2m(df_uk2_err,
-                       analysis_day
-                        )
+        report_historic_uk2m(df_uk2_err,
+                        analysis_day
+                            )
 
 
-    ## error and bias analysis
-    ## calculate bias of the UK2m over Weather Underground
-    error_bias_agg, historic_min, historic_max =  analyse_error_by_temp(df_uk2_err,
-                                                                pd.to_datetime(analysis_day, yearfirst=True),
-                                                                'week',
-                                                                target_col = 'WeaUnder'
-    )
+        ## error and bias analysis
+        ## calculate bias of the UK2m over Weather Underground
+        error_bias_agg, historic_min, historic_max =  analyse_error_by_temp(df_uk2_err,
+                                                                    pd.to_datetime(analysis_day, yearfirst=True),
+                                                                    'week',
+                                                                    target_col = 'WeaUnder'
+        )
 
-    ## Compare actual forecast with bias of prediction
-    df_flag_prediction_bias, temps = flag_new_prediction([float(temp_min_),float(temp_max_)], error_bias_agg, historic_min, historic_max)
+        ## Compare actual forecast with bias of prediction
+        df_flag_prediction_bias, temps = flag_new_prediction([float(temp_min_),float(temp_max_)], error_bias_agg, historic_min, historic_max)
 
-    ## print for report 
-    print_flag_predictions_bias(df_flag_prediction_bias, temps, historic_min, historic_max)
+        ## print for report 
+        print_flag_predictions_bias(df_flag_prediction_bias, temps, historic_min, historic_max)
 
  
 if __name__ =="__main__":
