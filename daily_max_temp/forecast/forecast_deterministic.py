@@ -162,6 +162,8 @@ def parse_args():
     parser.add_argument("--root-dir", type=str,default=None, help="Root directory to save the parquet file")
     parser.add_argument("--city", type=str, default="City", help="City name for plot title")
 
+    ##TODO: ad a verbose parser argument.
+    ## IF VERBOSE is true, then print. Instead of, work silent.
     args = parser.parse_args()
     return args
 

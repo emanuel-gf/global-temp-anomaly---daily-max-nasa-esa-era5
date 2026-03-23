@@ -133,11 +133,11 @@ def main():
 
     print(f"\n{'='*60}")
     print("  Fetching Ensemble CDF Data")
-    print(f"  Loc: {args.lat}, {args.lon} | Days: {args.days}")
+    print(f"  Loc: {args.lat}, {args.lon} | Days: {args.forecast_period}")
     print(f"{'='*60}\n")
 
     # 1. Fetch
-    full_df = fetch_all_ensembles(args.lat, args.lon, AVAILABLE_MODELS, args.days, args.timezone)
+    full_df = fetch_all_ensembles(args.lat, args.lon, AVAILABLE_MODELS,args.forecast_period, args.timezone)
 
     if full_df.empty:
         sys.exit("No data retrieved.")
