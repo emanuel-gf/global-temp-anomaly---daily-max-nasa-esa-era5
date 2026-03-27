@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import argparse
 from webdriver_manager.chrome import ChromeDriverManager
-
+import sys
 
 
 def get_driver():
@@ -58,6 +58,7 @@ def parse_args():
     parser.add_argument("--start", type=str, help="First day to start fecthing. YYYY-MM-DD e.g: 2026-03-21")
     parser.add_argument("--end", type=str, help="Last day to retrieve data ; 2026-03-21")
     parser.add_argument("--station-id", type=str, default="unknown", help="ID of the METAR estation to be retrieved. It is used to save the file as the given id.")
+    parser.add_argument("--city", type=str, default=None, help="Name of the parent folder, should be associated to the ID METAR.")
     parser.add_argument("--root", type=str, default=None, help="ROot folder which saves all the formated files per year than month subfolders.")
     return parser.parse_args()
     
@@ -67,9 +68,13 @@ def main(date_start, date_end, station_id="EGLC"):
     date_start = str(args.start)
     date_end = str(args.end)
     start = datetime.strptime(date_start, "%Y-%m-%d")
-    end = datetime.strptime(date_end, "%Y-%m-%d")
-    current_date = start
+    end = datetime.strptime(date_end, "%Y-%m-%d")   
+    if start > end :
+        current_date = end
+    else:
+        current_date = start
 
+    city  = args.city
     if args.root is None:
         root =  "/home/camarada/Documents/projects/temp-grss-nasa/data_"
     else:
@@ -96,7 +101,7 @@ def main(date_start, date_end, station_id="EGLC"):
                 current_date += timedelta(days=1)
                 continue
 
-            url = f"https://www.wunderground.com/history/daily/gb/london/{station_id}/date/{year}-{int(month)}-{int(day)}"
+            url = f"https://www.wunderground.com/history/daily/gb/{city}/{station_id}/date/{year}-{int(month)}-{int(day)}"
             
             print(f"Scraping: {current_date.date()}...")
             df = scrape_single_day(driver, url)
@@ -108,8 +113,10 @@ def main(date_start, date_end, station_id="EGLC"):
                 # Random delay to avoid rate limiting
                 time.sleep(random.uniform(5, 10))
             else:
-                print(f"FAILED to retrieve data for {current_date.date()}")
-                break # Exit loop to report where we stopped
+                print(f"FAILED to retrieve data for {current_date.date()} — skipping.")
+                time.sleep(random.uniform(30, 60))  # longer pause on failure
+                current_date += timedelta(days=1)   # skip bad day and continue
+                continue
                 
             current_date += timedelta(days=1)
 
@@ -121,9 +128,30 @@ def main(date_start, date_end, station_id="EGLC"):
         driver.quit()
         if last_processed_date:
             print(f"--- SCRAPER STOPPED. Last successful date: {last_processed_date.date()} ---")
-        else:
-            print("--- SCRAPER STOPPED. No data was saved. ---")
+            
+        # Count how many days were expected vs how many parquet files exist
+        expected_days = (end - start).days + 1
+        saved_files = []
+        check_date = start
+        while check_date <= end:
+            year  = check_date.strftime("%Y")
+            month = check_date.strftime("%m")
+            day   = check_date.strftime("%d")
+            file_path = os.path.join(root, "wunderground", year, month,
+                                    f"{station_id}_{year}_{month}_{day}.parquet")
+            if os.path.exists(file_path):
+                saved_files.append(file_path)
+            check_date += timedelta(days=1)
 
+        missing = expected_days - len(saved_files)
+        print(f"Progress: {len(saved_files)}/{expected_days} days saved. Missing: {missing}")
+
+        if missing == 0:
+            print("✅ All days complete!")
+            sys.exit(0)   # SUCCESS — tells bash "we're done"
+        else:
+            print(f"⚠️  Incomplete — {missing} days still missing.")
+            sys.exit(1)   # FAILURE — tells bash "please retry"
 if __name__ == "__main__":
     # Format: YYYY-MM-DD
-    main("2020-11-27", "2020-12-31")
+    main("2026-03-27", "2024-03-27")
