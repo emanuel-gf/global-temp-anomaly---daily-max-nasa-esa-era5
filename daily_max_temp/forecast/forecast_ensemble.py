@@ -1,9 +1,6 @@
 """
 python forecast_ensemble.py --lat 51.505 --lon 0.055 --timezone 'Europe/London' --city London --root-dir ./apiresult/ensemble
 
-
-PERHAPS THIS SHOULD BE ADAPT TO POINTS OUTSIDE EUROPE. ADAPT THE MODELS.
-
 forecast_cdf_ensemble.py
 ------------------------
 For each ensemble model, ALL members are fetched and used as individual draw.
@@ -51,55 +48,77 @@ from datetime import datetime
 
 # --- Configuration ---
 AVAILABLE_MODELS = [
-    "ecmwf_ifs025_ensemble",    # Global, 51 members
-    "ecmwf_aifs025_ensemble",   # Global, AI-based, 51 members
-    "ncep_gefs_seamless",       # Global (USA), 31 members
-    "gem_global_ensemble",      # Global (Canada), 21 members
-    "icon_seamless_eps",        # Europe/Global mix, 40 members
-    "ukmo_uk_ensemble_2km",     # UK Regional (will skip if out of bounds)
-    "icon_d2_eps"               # Germany Regional (will skip if out of bounds)
+    "ecmwf_ifs025_ensemble",
+    "ecmwf_aifs025_ensemble",
+    "ncep_gefs_seamless",
+    "gem_global_ensemble",
+    "icon_seamless_eps",
+    "ukmo_uk_ensemble_2km",   # UK regional — will self-skip if out of bounds
+    "icon_d2_eps",            # Germany regional — will self-skip if out of bounds
+    "meteofrance_arome_france_hd_ensemble",  # France regional
+    "arpae_cosmo_5m_ensemble",               # Italy regional
 ]
 
-def fetch_all_ensembles(lat: float,
-                         lon: float,
-                        models: list,
-                        forecast_days: int=3, 
-                        timezone: str = "UTC") -> pd.DataFrame:
-    """
-    Fetches all ensemble models in a single request and returns a combined DataFrame.
-    """
+def fetch_single_model(lat, lon, model, forecast_days, timezone):
     url = "https://ensemble-api.open-meteo.com/v1/ensemble"
     params = {
         "latitude": lat,
         "longitude": lon,
         "hourly": "temperature_2m",
-        "models": ",".join(models), 
+        "models": model,
         "forecast_days": forecast_days,
         "timezone": timezone,
         "temperature_unit": "celsius",
     }
+    r = requests.get(url, params=params, timeout=45)
+    r.raise_for_status()   # raises HTTPError — caller handles it
+    return r.json()
 
-    print(f"  Requesting models: {len(models)} ensembles...")
-    try:
-        r = requests.get(url, params=params, timeout=45)
-        r.raise_for_status()
-        data = r.json()
-    except Exception as exc:
-        print(f"    [ERROR] API request failed: {exc}")
+def fetch_all_ensembles(lat, lon, models, forecast_days=3, timezone="UTC"):
+    all_dfs = []
+
+    for model in models:
+        print(f"  [{model}] Requesting...", end=" ")
+        try:
+            data = fetch_single_model(lat, lon, model, forecast_days, timezone)
+        except requests.HTTPError as e:
+            # 400 almost always means out-of-bounds for regional models
+            status = e.response.status_code if e.response is not None else "?"
+            print(f"SKIPPED (HTTP {status} — likely out of regional bounds)")
+            continue
+        except requests.RequestException as e:
+            print(f"ERROR ({e})")
+            continue
+
+        hourly = data.get("hourly", {})
+        if not hourly:
+            print("SKIPPED (empty response)")
+            continue
+
+        df = pd.DataFrame(hourly)
+        df["time"] = pd.to_datetime(df["time"])
+        df.set_index("time", inplace=True)
+
+        # Rename member columns to include model prefix so they stay unique
+        # when we concatenate across models
+        rename = {
+            c: f"{c}_{model}"
+            for c in df.columns
+            if c != "time" and f"_{model}" not in c
+        }
+        df.rename(columns=rename, inplace=True)
+
+        n_members = len(df.columns)
+        print(f"OK ({n_members} members)")
+        all_dfs.append(df)
+
+    if not all_dfs:
         return pd.DataFrame()
 
-    if "hourly" not in data:
-        print("    [WARN] No hourly data in response.")
-        return pd.DataFrame()
+    # Outer join on time index — keeps all timestamps even if models differ
+    combined = pd.concat(all_dfs, axis=1, join="outer")
+    return combined
 
-    hourly = data["hourly"]
-    df = pd.DataFrame(hourly)
-    df['time'] = pd.to_datetime(df['time'])
-    df.set_index('time', inplace=True)
-
-    # Note: Open-Meteo appends model names to columns if multiple models are requested
-    # e.g., 'temperature_2m_ecmwf_ifs025_ensemble_member01'
-    return df
 
 def process_daily_maxima(df: pd.DataFrame, target_dates: list) -> pd.DataFrame:
     """
@@ -164,7 +183,7 @@ def main():
     print(pd.DataFrame(summary_rows).to_string(index=False))
 
     # 4. Save raw data
-    filename = save_path / f"{args.city}-Ensemble{datetime.now().strftime("%Y-%m-%d-%H:%m")}.parquet"
+    filename = save_path / f"{args.city}-Ensemble_{datetime.now().strftime("%Y-%m-%d-%H:%m")}.parquet"
     daily_max_df.to_parquet(filename)
     print(f"\n[INFO] Raw hourly data saved to: {filename}")
 
