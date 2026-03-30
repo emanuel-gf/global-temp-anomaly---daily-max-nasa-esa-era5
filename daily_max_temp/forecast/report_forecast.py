@@ -482,10 +482,11 @@ def main():
     ## report pipeline
     weights_dict = {'DWD Germany':0.1,
                     'DWD ICON EU':0.1,
-                    'ECMWF IFS HRES 9km':0.2,
-                    'MeteoFrance ARPEGE Europe': 0.2,
+                    'ECMWF IFS HRES 9km':0.15,
+                    'MeteoFrance ARPEGE Europe': 0.15,
                     'UKMO Global 10km':	0.1,
-                    'UKMO UK 2km':0.3
+                    'UKMO UK 2km':0.3,
+                    'MeteoFrance AROME_HD':0.1
                 }
 
     report_deterministic(df_det,

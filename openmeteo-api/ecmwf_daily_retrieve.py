@@ -1,3 +1,11 @@
+"""
+RETRIVES HISTORICAL DAILY TEMPERATURE FOR THE GIVEN LOCATIONS
+
+It is parte of the anomaly_temp_era5 project. 
+Here retrieving open-meteo api data to query into ecmwf model data.
+
+it is been running in batches but
+"""
 import openmeteo_requests
 import requests_cache
 import pandas as pd
@@ -78,7 +86,7 @@ def main():
     START = 0
     END = 117
     date_start = "2026-01-01"
-    date_end = "2026-02-28"
+    date_end = "2026-03-30"
     print(f"Requesting data for capitals {START} to {END}...")
     weather_history_df = fetch_weather_data(openmeteo,
                                             df_geolocated,
