@@ -11,6 +11,12 @@ import argparse
 from webdriver_manager.chrome import ChromeDriverManager
 import sys
 
+##map to the proper URL 
+map_dict_city = {
+    'madrid':'es',
+    'london':'gb',
+    'paris':'fr'
+}
 
 def get_driver():
     options = uc.ChromeOptions()
@@ -61,10 +67,11 @@ def parse_args():
     parser.add_argument("--city", type=str, default=None, help="Name of the parent folder, should be associated to the ID METAR.")
     parser.add_argument("--root", type=str, default=None, help="ROot folder which saves all the formated files per year than month subfolders.")
     return parser.parse_args()
-    
-def main(date_start, date_end, station_id="EGLC"):
-    args = parse_args()
 
+
+def main():
+    args = parse_args()
+    station_id = args.station_id
     date_start = str(args.start)
     date_end = str(args.end)
     start = datetime.strptime(date_start, "%Y-%m-%d")
@@ -89,7 +96,7 @@ def main(date_start, date_end, station_id="EGLC"):
             day = current_date.strftime("%d")
             
             # Create Folder Structure: Year/Month/data_
-            folder_path = os.path.join(root, "wunderground", year, month)
+            folder_path = os.path.join(root, "wunderground",city,year,month)
             os.makedirs(folder_path, exist_ok=True)
             
             file_name = f"{station_id}_{year}_{month}_{day}.parquet"
@@ -101,7 +108,7 @@ def main(date_start, date_end, station_id="EGLC"):
                 current_date += timedelta(days=1)
                 continue
 
-            url = f"https://www.wunderground.com/history/daily/gb/{city}/{station_id}/date/{year}-{int(month)}-{int(day)}"
+            url = f"https://www.wunderground.com/history/daily/{map_dict_city[city]}/{city}/{station_id}/date/{year}-{int(month)}-{int(day)}"
             
             print(f"Scraping: {current_date.date()}...")
             df = scrape_single_day(driver, url)
@@ -152,6 +159,6 @@ def main(date_start, date_end, station_id="EGLC"):
         else:
             print(f"⚠️  Incomplete — {missing} days still missing.")
             sys.exit(1)   # FAILURE — tells bash "please retry"
+
 if __name__ == "__main__":
-    # Format: YYYY-MM-DD
-    main("2026-03-27", "2024-03-27")
+    main()

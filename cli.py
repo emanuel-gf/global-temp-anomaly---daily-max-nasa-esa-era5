@@ -98,7 +98,8 @@ def live_stream(city, as_json, dry_run):
         raise SystemExit(1)
 
     icao = loc["icao"]
-    cmd = ["python", "scripts/metar_fetcher.py", "-s", icao]
+    tz = loc["timezone"]
+    cmd = ["python", "./daily_max_temp/live_stream/metar_fetcher_live.py", "-s", icao, "-tz", tz]
 
     if as_json:
         cmd.append("--json")
@@ -111,7 +112,7 @@ def live_stream(city, as_json, dry_run):
 
 
 # --- fetch-all (bonus: run both fetches at once) ---
-@cli.command("fetch-all")
+@cli.command("fetch-both")
 @click.argument("city")
 @click.option("--dry-run", is_flag=True)
 @click.pass_context

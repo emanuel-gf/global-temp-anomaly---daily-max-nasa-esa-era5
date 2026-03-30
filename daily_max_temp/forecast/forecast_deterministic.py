@@ -40,6 +40,13 @@ from pathlib import Path
 # Model registry
 # ---------------------------------------------------------------------------
 
+MODELS = [
+    'ukmo_uk_deterministic_2km',
+    'ukmo_global_deterministic_10km',
+    'arome_france',
+    'arpege_world',
+    'arpege_europe',
+]
 MODELS = {
     "ECMWF IFS HRES 9km": {
         "base_url": "https://api.open-meteo.com/v1/ecmwf",
@@ -61,7 +68,7 @@ MODELS = {
     },
     "MeteoFrance ARPEGE Europe": {
         "base_url": "https://api.open-meteo.com/v1/forecast",
-        "model_param": "meteofrance_arpege_europe",
+        "model_param": "arpege_europe",
         "forecast_days": 3,           # 4-day max
         "color": "#984ea3",
     },
@@ -77,6 +84,18 @@ MODELS = {
         "forecast_days": 3,           # 5-day max
         "color": "#a65628",
     },
+    "MeteoFrance AROME_HD": {
+        "base_url": "https://api.open-meteo.com/v1/forecast",
+        "model_param": "arome_france",
+        "forecast_days": 3,           # 4-day max
+        "color": "#984ea3",
+    },
+    "Italia_Meteo_AROME_HD": {
+        "base_url": "https://api.open-meteo.com/v1/forecast",
+        "model_param": "italia_meteo_arpae_icon_2i",
+        "forecast_days": 3,           # 4-day max
+        "color": "#984ea3",
+    }
 }
 
 

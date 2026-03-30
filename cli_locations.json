@@ -25,5 +25,32 @@
     "icao": "EPWA",
     "ensemble_dir": "./apiresult/ensemble",
     "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Madrid": {
+    "lat": 40.4934,
+    "lon": -3.5722,
+    "timezone": "Europe/Madrid",
+    "temprange": "10-16",
+    "icao": "LEMD",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Guarulhos": {
+    "lat": -23.4130,
+    "lon": -46.47,
+    "timezone": "America/Sao_Paulo",
+    "temprange": "10-16",
+    "icao": "SBGR",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Buenos-Aires": {
+    "lat": -34.5594,
+    "lon": -58.41550,
+    "timezone": "America/Buenos_Aires",
+    "temprange": "10-16",
+    "icao": "SAEZ",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
   }
 }

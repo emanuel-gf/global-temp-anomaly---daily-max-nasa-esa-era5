@@ -74,7 +74,9 @@ def print_deterministic_report(df_print,
     print(f"Dia:{analysis_date}")
     print("-"*30)
 
-
+    ## drop nan values
+    df_print = df_print.dropna(axis=0)
+    
     # Determine a reasonable width for the model column
     model_width = max(df_print['model'].str.len()) + 2  # +2 for spacing
 
