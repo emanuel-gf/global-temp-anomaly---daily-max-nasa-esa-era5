@@ -6,6 +6,18 @@
     "temprange": "13-17",
     "icao": "EGLC",
     "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic",
+    "sub-fetchers":{
+      "Hampstead-London":"./daily_max/live_stream/london/"
+    }
+  },
+  "London-H": {
+    "lat": 51.4707,
+    "lon": -0.4599,
+    "timezone": "Europe/London",
+    "temprange": "13-17",
+    "icao": "EGLL",
+    "ensemble_dir": "./apiresult/ensemble",
     "deterministic_dir": "./apiresult/deterministic"
   },
   "Paris": {
@@ -35,12 +47,62 @@
     "ensemble_dir": "./apiresult/ensemble",
     "deterministic_dir": "./apiresult/deterministic"
   },
+  "Madrid-L": {
+    "lat": 40.4879,
+    "lon":  -3.4568,
+    "timezone": "Europe/Madrid",
+    "temprange": "10-16",
+    "icao": "LEMD",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Madrid-H": {
+    "lat":  40.44930,
+    "lon":  -3.64613,
+    "timezone": "Europe/Madrid",
+    "temprange": "10-16",
+    "icao": "LETS",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
   "Guarulhos": {
     "lat": -23.4130,
     "lon": -46.47,
     "timezone": "America/Sao_Paulo",
     "temprange": "10-16",
     "icao": "SBGR",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic",
+    "cgesp_stations": {
+      "tremembe":  { "channel_id": "1000994", "posto_id": "1000994" },
+      "sao-miguel-paulist":{"channel_id":"1000862","posto_id":"1000862"},
+      "itam-paulista":{"channel_id":"1000882","posto_id":"1000882"}
+    }
+  },
+  "Congonhas": {
+    "lat": -23.627,
+    "lon": -46.6546,
+    "timezone": "America/Sao_Paulo",
+    "temprange": "10-16",
+    "icao": "SBSP",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Campo-de-Marte": {
+    "lat": -23.5091,
+    "lon": -46.63780,
+    "timezone": "America/Sao_Paulo",
+    "temprange": "10-16",
+    "icao": "SBMT",
+    "ensemble_dir": "./apiresult/ensemble",
+    "deterministic_dir": "./apiresult/deterministic"
+  },
+  "Campinas": {
+    "lat": -23.627,
+    "lon": -46.6546,
+    "timezone": "America/Sao_Paulo",
+    "temprange": "10-16",
+    "icao": "SBKP",
     "ensemble_dir": "./apiresult/ensemble",
     "deterministic_dir": "./apiresult/deterministic"
   },

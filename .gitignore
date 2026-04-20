@@ -6,3 +6,6 @@ data_
 *.sqlite
 *.parquet
 *.csv
+*.png
+*.dat
+*.inv

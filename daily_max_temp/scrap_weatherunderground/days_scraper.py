@@ -135,8 +135,7 @@ def main():
         driver.quit()
         if last_processed_date:
             print(f"--- SCRAPER STOPPED. Last successful date: {last_processed_date.date()} ---")
-            
-        # Count how many days were expected vs how many parquet files exist
+        
         expected_days = (end - start).days + 1
         saved_files = []
         check_date = start
@@ -149,16 +148,12 @@ def main():
             if os.path.exists(file_path):
                 saved_files.append(file_path)
             check_date += timedelta(days=1)
-
         missing = expected_days - len(saved_files)
-        print(f"Progress: {len(saved_files)}/{expected_days} days saved. Missing: {missing}")
-
         if missing == 0:
-            print("✅ All days complete!")
+            print("All days complete!")
             sys.exit(0)   # SUCCESS — tells bash "we're done"
         else:
             print(f"⚠️  Incomplete — {missing} days still missing.")
             sys.exit(1)   # FAILURE — tells bash "please retry"
-
 if __name__ == "__main__":
     main()
