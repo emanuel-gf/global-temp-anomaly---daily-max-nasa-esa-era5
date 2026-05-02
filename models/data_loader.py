@@ -27,34 +27,54 @@ class YearTempDSMask(BaseTempDataset):
         The label is the max temp for the month.
 
           """
-    def __init__(self, npz_path, return_mask=True, exclude_2025=True, split_idx: int= -12):
+    def __init__(self, npz_path, 
+                 return_mask=True, 
+                 exclude_2025=True, 
+                 split_idx: int= -12):
         self.return_mask = return_mask
         data = np.load(npz_path, allow_pickle=True)
         
         ## which index of the array to split for training vs 2025 holdout.
         #  By default, it takes the last 12 samples as 2025 data, but can be overridden for flexibility.
-        split_idx = split_idx if exclude_2025 else None
+        if exclude_2025:
+            print(f"Holding out a subset given by the index:{split_idx}")
+            
+            split_idx = split_idx 
+            assert split_idx < 0
 
-        self.temp_matrices_raw = data['temp_matrices'][:split_idx]
-        self.masks = data['masks'][:split_idx]
-        self.labels = data['labels'][:split_idx]
-        self.month_years = data['month_years'][:split_idx]
-        self.capitals = data['capitals'].astype(str)
-        self.years = self._extract_years(self.month_years)
+            self.temp_matrices_raw = data['temp_matrices'][:split_idx]
+            self.masks = data['masks'][:split_idx]
+            self.labels = data['labels'][:split_idx]
+            self.month_years = data['month_years'][:split_idx]
+            self.capitals = data['capitals'].astype(str)
+            self.years = self._extract_years(self.month_years)
+            print(f"Last day of the set:{self.month_years[-1]}")
+            # Holdout 2025 logic
+            self.temp_matrices_2025_raw = data['temp_matrices'][split_idx:]
+            self.masks_2025 = data['masks'][split_idx:]
+            self.labels_2025 = data['labels'][split_idx:]
+            self.month_years_2025 = data['month_years'][split_idx:]
+            self.years_2025 = self._extract_years(self.month_years_2025)
+            print(f"First day of holdout:{self.month_years_2025[0]}")
+            print(f"Last day of holdout:{self.month_years_2025[-1]}")
 
-        # Holdout 2025 logic
-        self.temp_matrices_2025_raw = data['temp_matrices'][split_idx:]
-        self.masks_2025 = data['masks'][split_idx:]
-        self.labels_2025 = data['labels'][split_idx:]
-        self.month_years_2025 = data['month_years'][split_idx:]
-        self.years_2025 = self._extract_years(self.month_years_2025)
+        else:
+            # IF no holdout logic of th last subset is required, so full timeseries is available
+            self.temp_matrices_raw = data['temp_matrices']
+            self.masks = data['masks']
+            self.labels = data['labels']
+            self.month_years = data['month_years']
+            self.capitals = data['capitals'].astype(str)
+            self.years = self._extract_years(self.month_years)
 
         # Normalize using only training stats to prevent leakage
         self.mu = torch.tensor(self.temp_matrices_raw, dtype=torch.float32).mean(dim=0)
         self.std = torch.tensor(self.temp_matrices_raw, dtype=torch.float32).std(dim=0)
         
+        ## create temp matrices
         self.temp_matrices = self._normalize(self.temp_matrices_raw, self.mu, self.std)
-        self.temp_matrices_2025 = self._normalize(self.temp_matrices_2025_raw, self.mu, self.std)
+        if exclude_2025:
+            self.temp_matrices_2025 = self._normalize(self.temp_matrices_2025_raw, self.mu, self.std)
 
     def __len__(self):
         return len(self.labels)
@@ -126,3 +146,5 @@ class YearTempDSMask_Finetun(BaseTempDataset):
 
     def get_month_year(self, idx):
         return self.month_years[idx]
+
+ 
