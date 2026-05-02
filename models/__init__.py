@@ -1,7 +1,7 @@
 # Models package - exportable classes and functions
 
 # Architectures
-from .architectures import MaskTempCNN, YearMaskTempCNN
+from .architectures import (MaskTempCNN, YearMaskTempCNN, Detrend_MaskTempCNN, DetrendLoaderWrapper)
 
 # Data loaders
 from .data_loader import (
@@ -9,6 +9,7 @@ from .data_loader import (
     YearTempDSMask,
     YearTempDSMask_Finetun,
     TempDS2025
+    
 )
 
 # Training utilities
@@ -33,4 +34,6 @@ __all__ = [
     "train_epoch",
     "train_model",
     "evaluate_model",
+    "Detrend_MaskTempCNN",
+    "DetrendLoaderWrapper"
 ]

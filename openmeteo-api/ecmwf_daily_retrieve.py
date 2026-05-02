@@ -86,7 +86,7 @@ def main():
     START = 0
     END = 117
     date_start = "2026-01-01"
-    date_end = "2026-03-31"
+    date_end = "2026-04-30"
     print(f"Requesting data for capitals {START} to {END}...")
     weather_history_df = fetch_weather_data(openmeteo,
                                             df_geolocated,
