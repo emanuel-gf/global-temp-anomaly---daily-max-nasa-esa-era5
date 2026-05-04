@@ -95,7 +95,7 @@ def _parse_table(soup: BeautifulSoup) -> list[dict]:
     if not data_rows:
         raise ScraperError(f"{SOURCE_ID}: no data rows found in table")
 
-    fetched_at = datetime.now(timezone.utc).isoformat()
+    fetched_at = datetime.now().isoformat()
     results = []
 
     for row in data_rows:
@@ -127,11 +127,18 @@ def _parse_row(cells: list[str], fetched_at: str) -> dict | None:
         return None
 
     station = cells[0].strip()
-    obs_time = cells[1].strip()
+    obs_time_str = cells[1].strip()
 
     # need at least station + time + one numeric column
-    if not station or not obs_time:
-        return None
+    if not obs_time_str or ":" not in obs_time_str:
+        return None  # or continue if inside a loop
+
+    print(obs_time_str)
+    obs_time = datetime.strptime(obs_time_str, "%H:%M")
+
+    # Attach today's date and respect that obs_time. Without using timezone.
+    now = datetime.now()
+    obs_time = obs_time.replace(year=now.year, month=now.month, day=now.day).strftime("%Y-%m-%d-%H:%M:%S")
 
     record = {
         "source":     SOURCE_ID,

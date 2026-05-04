@@ -50,7 +50,7 @@ def fetch() -> dict:
         "humidity_pct": _parse_humidity(soup),
         "pressure_hpa": _parse_pressure(soup),
         "feels_like_c": _parse_feels_like(soup),
-        "timestamp":    _parse_site_timestamp(soup),
+        "obs_time":    _parse_site_timestamp(soup),
         "fetched_at":   datetime.now(timezone.utc).isoformat(),
     }
 
@@ -112,11 +112,9 @@ def _parse_site_timestamp(soup: BeautifulSoup) -> str | None:
     m = re.search(r"Data recorded at\s+(\d{2}:\d{2}:\d{2})\s+(\w+)", text)
     if not m:
         return None
-    time_str, tz_abbr = m.group(1), m.group(2)
-    # BST = UTC+1, GMT = UTC+0
-    offset = "+01:00" if tz_abbr == "BST" else "+00:00"
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return f"{today}T{time_str}{offset}"
+    time_str, _ = m.group(1), m.group(2)
+    today = datetime.now().strftime("%Y-%m-%d")
+    return f"{today}-{time_str}"
 
 
 def _find_value_after_label(soup: BeautifulSoup, label: str, source: str) -> float:
